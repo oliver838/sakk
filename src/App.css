@@ -5,6 +5,9 @@
   text-align: center;
 }
 *{
+  box-sizing: border-box;
+  margin: 0 auto;
+  
   user-select: none;
 }
 .logo {
@@ -34,11 +37,87 @@
     animation: logo-spin infinite 20s linear;
   }
 }
-
+.center{
+  width: 100%;
+}
 .card {
   padding: 2em;
 }
 
 .read-the-docs {
   color: #888;
+}
+@keyframes fogMove {
+  0% { background-position: 0 0; }
+  100% { background-position: 200% 0; }
+}
+
+body {
+  background: radial-gradient(circle at center, #1b1b1b, #000);
+  overflow: hidden;
+}
+
+#root::before {
+  content: "";
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: url('https://www.transparenttextures.com/patterns/foggy-birds.png');
+  opacity: 0.1;
+  animation: fogMove 60s linear infinite;
+  z-index: -1;
+}
+#root::before {
+  content: "";
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 80%);
+  animation: flash 8s infinite ease-in-out;
+  z-index: -1;
+}
+
+@keyframes flash {
+  0%, 90%, 100% { opacity: 0; }
+  50% { opacity: 0.2; }
+}
+body {
+  background: radial-gradient(circle at center, #0d0221, #000);
+  overflow: hidden;
+  color: white;
+  font-family: 'Orbitron', sans-serif;
+}
+
+@keyframes fogMove {
+  0% { background-position: 0 0; }
+  100% { background-position: 200% 0; }
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: url('https://www.transparenttextures.com/patterns/foggy-birds.png');
+  opacity: 0.08;
+  animation: fogMove 80s linear infinite;
+  z-index: -1;
+}
+.piece {
+  position: absolute;
+  transition: transform 0s; /* JS animáció irányítja */
+  will-change: transform;
+}
+
+body{
+  width: 100vw;
+  height: 100%;
+}
+html {
+    margin:  0 auto !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    min-width: 100vw;
+}
+#root{
+  width: 100vw;
 }

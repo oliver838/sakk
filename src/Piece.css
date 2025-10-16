@@ -1,0 +1,98 @@
+/* ─────────────────────────────── */
+/* BÁBÚK STÍLUSA                  */
+/* ─────────────────────────────── */
+.chess-piece {
+  font-size: 2.2rem;
+  text-align: center;
+  user-select: none;
+  cursor: pointer;
+  position: relative;
+  font-weight: 400; /* vékonyabb, finomabb */
+  filter: drop-shadow(0 0 6px rgba(114, 9, 183, 0.6));
+  transition: transform 0.15s ease, filter 0.3s ease;
+}
+
+.chess-piece:hover {
+  transform: scale(1.1);
+  filter: drop-shadow(0 0 12px rgba(200, 0, 255, 0.9));
+}
+
+/* Fehér és fekete bábuk színe */
+.chess-piece.white {
+  color: #f2e9ff; /* enyhén lilás fehér */
+  text-shadow: 0 0 8px rgba(200, 160, 255, 0.5);
+}
+
+.chess-piece.black {
+  color: #111; /* tényleg sötét */
+  text-shadow:
+    0 0 4px rgba(255, 0, 200, 0.2),
+    0 0 10px rgba(50, 0, 100, 0.4);
+}
+
+/* ─────────────────────────────── */
+/* KIVÁLASZTOTT BÁBU AURÁJA       */
+/* ─────────────────────────────── */
+.chess-piece.selected::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 200%;
+  height: 200%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 0, 255, 0.5), transparent 70%);
+  box-shadow:
+    0 0 25px rgba(255, 0, 255, 0.8),
+    0 0 60px rgba(180, 0, 255, 0.5);
+  animation: selectedAura 2s ease-in-out infinite;
+  z-index: -1;
+  pointer-events: none;
+}
+
+@keyframes selectedAura {
+  0%, 100% {
+    opacity: 0.6;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.2);
+  }
+}
+
+
+/* Dark aura (pulzáló lila fény) */
+.chess-piece::before {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  top: 0;
+  left: 0;
+  background: radial-gradient(circle, rgba(114,9,183,0.4) 0%, transparent 70%);
+  animation: auraPulse 2.5s infinite;
+}
+
+@keyframes auraPulse {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.2); }
+}
+
+/* Robbanás animáció */
+.particle-burst {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  background: radial-gradient(circle, #f72585, transparent);
+  border-radius: 50%;
+  opacity: 0.8;
+  animation: burstAnim 0.5s ease-out forwards;
+}
+
+@keyframes burstAnim {
+  0% { transform: scale(0.3); opacity: 1; }
+  100% { transform: scale(3); opacity: 0; }
+}
