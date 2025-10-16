@@ -30,12 +30,7 @@ export const Menu = ({ setUser, onStartLocal, onStartOnline }) => {
         }}
       >
         <ul style={{ listStyle: "none", padding: 0, marginTop: 60 }}>
-          <li onClick={() => startLocalGame()} style={{ marginBottom: "16px", cursor: "pointer" }}>
-            Local Game
-          </li>
-          <li onClick={() => startOnlineGame()} style={{ marginBottom: "16px", cursor: "pointer" }}>
-            Online Game
-          </li>
+          
           <li><Link to="/" className="hover:underline">Home</Link></li>
           <li> <Link to="/friends" className="hover:underline">Friends</Link></li>
           <li> <Link to="/friendinvites" className="hover:underline">Friendinvites</Link></li>
