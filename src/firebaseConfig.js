@@ -7,12 +7,12 @@ import { getFirestore } from "firebase/firestore";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyDbwSfgKO2aefbKQz5bRo6oXV_8RkDgng8",
-  authDomain: "chess-alma.firebaseapp.com",
-  projectId: "chess-alma",
-  storageBucket: "chess-alma.firebasestorage.app",
-  messagingSenderId: "1073063882031",
-  appId: "1:1073063882031:web:c3634cb20ab8b9ed3985da"
+  apiKey: import.meta.env.REACT_APP_FIREBASE_API_KEY,
+  authDomain: import.meta.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.REACT_APP_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.REACT_APP_FIREBASE_APP_ID
 };
 
 

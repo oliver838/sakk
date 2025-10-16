@@ -2,8 +2,9 @@ import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { HiOutlineMenuAlt2, HiOutlineMenuAlt3 } from "react-icons/hi";
 import { LogoutButton } from "./Logout";
+import { Link } from "react-router-dom";
 
-export const Menu = ({ setUser }) => {
+export const Menu = ({ setUser, onStartLocal, onStartOnline }) => {
   const [isOpen, setIsOpen] = useState(false);
   const panelWidth = 250; // menü szélessége
     
@@ -33,9 +34,12 @@ export const Menu = ({ setUser }) => {
             Local Game
           </li>
           <li onClick={() => startOnlineGame()} style={{ marginBottom: "16px", cursor: "pointer" }}>
-          Online Game
-        </li>
-
+            Online Game
+          </li>
+          <li><Link to="/" className="hover:underline">Home</Link></li>
+          <li> <Link to="/friends" className="hover:underline">Friends</Link></li>
+          <li> <Link to="/friendinvites" className="hover:underline">Friendinvites</Link></li>
+          
           <li style={{ marginBottom: "16px", cursor: "pointer" }}>Help</li>
           <li><LogoutButton onLogout={() => setUser(null)} /></li>
         </ul>

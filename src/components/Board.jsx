@@ -2,25 +2,27 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import './halloween-chess.css';
+import { doc, onSnapshot, updateDoc } from "firebase/firestore";
+import { db } from "../firebaseConfig";
 import { Piece } from './Piece';
 
-export const Board = () => {
-   const wrapperRef = useRef(null);
+export const Board = ({ onlineGameId, playerColor, gameMode }) => {
+  const wrapperRef = useRef(null);
   const [selected, setSelected] = useState(null);
   const [lastMove, setLastMove] = useState(null);
   const [validMoves, setValidMoves] = useState([]);
   const [currentTurn, setCurrentTurn] = useState('white');
   const [flashCells, setFlashCells] = useState([]);
-
-    const [boardWidth, setBoardWidth] = useState(880);
+  const [boardWidth, setBoardWidth] = useState(880);
   const [explosions, setExplosions] = useState([]);
   const [board, setBoard] = useState(
     Array(8).fill(null).map(() => Array(8).fill(null))
   );
 
   const squareSize = boardWidth / 8;
+  const isPlayerTurn = playerColor === currentTurn || gameMode === "local";
 
-  // random villódzó cellák (megtartottad korábban)
+  // Flashing cells
   useEffect(() => {
     const interval = setInterval(() => {
       const randRow = Math.floor(Math.random() * 8);
@@ -31,8 +33,20 @@ export const Board = () => {
     return () => clearInterval(interval);
   }, []);
 
-  
+  // Firestore subscription (online only)
+  useEffect(() => {
+    if (!onlineGameId) return;
+    const unsub = onSnapshot(doc(db, "games", onlineGameId), (snapshot) => {
+      const data = snapshot.data();
+      if (!data) return;
+      setBoard(data.board);
+      setCurrentTurn(data.currentTurn);
+      setLastMove(data.lastMove || null);
+    });
+    return () => unsub();
+  }, [onlineGameId]);
 
+  // Board resize
   useEffect(() => {
     const updateWidth = () => {
       if (wrapperRef.current) {
@@ -40,49 +54,19 @@ export const Board = () => {
         setBoardWidth(Math.max(180, Math.min(width, 680)));
       }
     };
-
-    updateWidth(); // azonnali beállítás
-
+    updateWidth();
     const ro = new ResizeObserver(updateWidth);
     if (wrapperRef.current) ro.observe(wrapperRef.current);
-
     return () => ro.disconnect();
   }, []);
-  // inicial állás
+
+  // Initial pieces only if offline
   useEffect(() => {
-    setupInitialPieces();
-  }, []);
-
-  function movePieceSmoothly(fromRow, fromCol, toRow, toCol, duration = 600) {
-    // ez csak fallback: ha később szeretnéd, használhatod; most a Piece komponens animál
-    const pieceElement = document.querySelector(
-      `[data-row='${fromRow}'][data-col='${fromCol}'] .piece`
-    );
-    if (!pieceElement) return;
-    
-    
-
-
-    const startX = fromCol * squareSize;
-    const startY = fromRow * squareSize;
-    const targetX = toCol * squareSize;
-    const targetY = toRow * squareSize;
-    const startTime = performance.now();
-    function animate(time) {
-      const elapsed = time - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      const currentX = startX + (targetX - startX) * progress;
-      const currentY = startY + (targetY - startY) * progress;
-      pieceElement.style.transform = `translate(${currentX}px, ${currentY}px)`;
-      if (progress < 1) requestAnimationFrame(animate);
-      else pieceElement.style.transform = ''; // visszaállítjuk
-    }
-    requestAnimationFrame(animate);
-  }
+    if (!onlineGameId) setupInitialPieces();
+  }, [onlineGameId]);
 
   const setupInitialPieces = () => {
     const newBoard = Array(8).fill(null).map(() => Array(8).fill(null));
-
     newBoard[0] = [
       { type: 'rook', color: 'black', symbol: '♜' },
       { type: 'knight', color: 'black', symbol: '♞' },
@@ -105,11 +89,10 @@ export const Board = () => {
       { type: 'knight', color: 'white', symbol: '♘' },
       { type: 'rook', color: 'white', symbol: '♖' },
     ];
-
     setBoard(newBoard);
   };
 
-  // segédfüggvények (meghagytam a te logikádat)
+  // Helpers
   const simulateMove = (boardState, fromRow, fromCol, toRow, toCol) => {
     const newBoard = boardState.map(row => row.map(cell => (cell ? { ...cell } : null)));
     newBoard[toRow][toCol] = newBoard[fromRow][fromCol];
@@ -136,6 +119,7 @@ export const Board = () => {
     if (!piece) return false;
     if (target && target.color === piece.color) return false;
     const type = piece.type;
+
     if (type === 'pawn') {
       if (piece.color === 'white') {
         if (fromCol === toCol && !target && toRow === fromRow - 1) return true;
@@ -147,22 +131,16 @@ export const Board = () => {
         if (Math.abs(toCol - fromCol) === 1 && toRow === fromRow + 1 && target) return true;
       }
     } else if (type === 'bishop') {
-      if (Math.abs(fromCol - toCol) === Math.abs(fromRow - toRow)) {
-        return isPathClear(fromRow, fromCol, toRow, toCol, boardState);
-      }
+      if (Math.abs(fromCol - toCol) === Math.abs(fromRow - toRow)) return isPathClear(fromRow, fromCol, toRow, toCol, boardState);
     } else if (type === 'rook') {
-      if ((fromRow !== toRow && fromCol === toCol) || (fromRow === toRow && fromCol !== toCol)) {
-        return isPathClear(fromRow, fromCol, toRow, toCol, boardState);
-      }
+      if ((fromRow !== toRow && fromCol === toCol) || (fromRow === toRow && fromCol !== toCol)) return isPathClear(fromRow, fromCol, toRow, toCol, boardState);
     } else if (type === 'knight') {
       if ((Math.abs(fromRow - toRow) === 1 && Math.abs(fromCol - toCol) === 2) ||
           (Math.abs(fromRow - toRow) === 2 && Math.abs(fromCol - toCol) === 1)) return true;
     } else if (type === 'queen') {
       if ((Math.abs(fromCol - toCol) === Math.abs(fromRow - toRow)) ||
           (fromRow !== toRow && fromCol === toCol) ||
-          (fromRow === toRow && fromCol !== toCol)) {
-        return isPathClear(fromRow, fromCol, toRow, toCol, boardState);
-      }
+          (fromRow === toRow && fromCol !== toCol)) return isPathClear(fromRow, fromCol, toRow, toCol, boardState);
     } else if (type === 'king') {
       if ((Math.abs(fromCol - toCol) <= 1 && Math.abs(fromRow - toRow) <= 1)) return true;
     }
@@ -199,46 +177,31 @@ export const Board = () => {
     for (let r = 0; r < 8; r++) {
       for (let c = 0; c < 8; c++) {
         const testBoard = simulateMove(board, row, col, r, c);
-        if (isValidMove(row, col, r, c) && !isKingInCheck(piece.color, testBoard)) {
-          moves.push({ row: r, col: c });
-        }
+        if (isValidMove(row, col, r, c) && !isKingInCheck(piece.color, testBoard)) moves.push({ row: r, col: c });
       }
     }
     return moves;
   };
 
   const handleSquareClick = (row, col) => {
+    if (!isPlayerTurn) return;
     const piece = board[row][col];
-    // ha nincs kiválasztva és nem a te bábud, ne válassz
+    if (!selected && piece && gameMode!='local' && piece.color !== playerColor) return;
+    
     if (!selected && piece && piece.color !== currentTurn) return;
-
     if (selected) {
-      // ha ugyanannak a színnek a bábujára kattintunk: új kiválasztás
       if (piece && piece.color === board[selected.row][selected.col].color) {
-        if (piece.color !== currentTurn) return;
         setSelected({ row, col });
         setValidMoves(getValidMoves(row, col));
         return;
       }
 
-      // ha érvényes lépés, végrehajtjuk
       if (isValidMove(selected.row, selected.col, row, col)) {
         const target = board[row][col];
-
-        setLastMove({
-          fromRow: selected.row,
-          fromCol: selected.col,
-          toRow: row,
-          toCol: col,
-          captured: !!target,
-        });
-
         const testBoard = simulateMove(board, selected.row, selected.col, row, col);
         if (!isKingInCheck(currentTurn, testBoard)) {
-          // opcionálisan animálhatunk manuálisan:
-          // movePieceSmoothly(selected.row, selected.col, row, col, 350);
-
           setBoard(testBoard);
+          setLastMove({ fromRow: selected.row, fromCol: selected.col, toRow: row, toCol: col, captured: !!target });
 
           if (target) {
             const id = Date.now();
@@ -246,119 +209,92 @@ export const Board = () => {
             setTimeout(() => setExplosions(prev => prev.filter(e => e.id !== id)), 700);
           }
 
-          setCurrentTurn(prev => (prev === 'white' ? 'black' : 'white'));
+          setCurrentTurn(prev => {
+            const next = prev === 'white' ? 'black' : 'white';
+            if (onlineGameId) {
+              updateDoc(doc(db, "games", onlineGameId), {
+                board: testBoard,
+                currentTurn: next,
+                lastMove: { fromRow: selected.row, fromCol: selected.col, toRow: row, toCol: col, captured: !!target }
+              });
+            }
+            return next;
+          });
         }
-
-        setValidMoves([]);
         setSelected(null);
+        setValidMoves([]);
         return;
       }
 
-      // semmi: töröljük a kijelölést
-      setValidMoves([]);
       setSelected(null);
+      setValidMoves([]);
     } else if (piece && piece.color === currentTurn) {
-      // kiválasztás: számítsuk ki az érvényes lépéseket
       setSelected({ row, col });
       setValidMoves(getValidMoves(row, col));
     }
   };
 
-  // helper: gyors ellenőrzés, hogy egy mező a validMoves-ban van-e
   const isInValidMoves = (r, c) => validMoves.some(m => m.row === r && m.col === c);
-
-  // helper: utolsó lépés kiemelés
-  const isLastMoveSquare = (r, c) =>
-    lastMove && (
-      (lastMove.fromRow === r && lastMove.fromCol === c) ||
-      (lastMove.toRow === r && lastMove.toCol === c)
-    );
+  const isLastMoveSquare = (r, c) => lastMove && ((lastMove.fromRow === r && lastMove.fromCol === c) || (lastMove.toRow === r && lastMove.toCol === c));
 
   return (
     <div ref={wrapperRef} style={{ width: '100%', maxWidth: 700, margin: 'auto' }}>
-      <div
-        className="chess-board"
-        style={{
-          position: 'relative',
-          width: boardWidth,
-          height: boardWidth,
-          border: '2px solid #333',
-          margin: 'auto',
-        }}
-      >
-        {Array(8).fill(0).map((_, r) =>
-          Array(8).fill(0).map((_, c) => {
-            const isWhite = (r + c) % 2 === 0;
-            const flash = flashCells.some(f => f.row === r && f.col === c);
-            const valid = isInValidMoves(r, c);
-            const last = isLastMoveSquare(r, c);
-            const selectedHere = selected && selected.row === r && selected.col === c;
+      <div className="chess-board" style={{ position: 'relative', width: boardWidth, height: boardWidth, border: '2px solid #333', margin: 'auto', transform: playerColor === 'black' ? 'rotate(180deg)' : 'none' }}>
+        {Array(8).fill(0).map((_, r) => Array(8).fill(0).map((_, c) => {
+          const isWhite = (r + c) % 2 === 0;
+          const flash = flashCells.some(f => f.row === r && f.col === c);
+          const valid = isInValidMoves(r, c);
+          const last = isLastMoveSquare(r, c);
+          const selectedHere = selected && selected.row === r && selected.col === c;
 
-            return (
-              <div
-                key={`sq-${r}-${c}`}
-                onClick={() => handleSquareClick(r, c)}
-                className={`square ${selectedHere ? 'selected-square' : ''} ${last ? 'last-move' : ''}`}
-                style={{
-                  position: 'absolute',
-                  top: r * squareSize,
-                  left: c * squareSize,
-                  width: squareSize,
-                  height: squareSize,
-                  backgroundColor: isWhite ? '#1a1a1a' : '#2c2c2c',
-                  border: '1px solid #111',
-                  boxSizing: 'border-box',
-                  transition: 'background-color 0.15s ease',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  pointerEvents: 'auto',
-                }}
-              >
-                {valid && <div className="move-hint" />}
-              </div>
-            );
-          })
-        )}
+          return (
+            <div key={`sq-${r}-${c}`} onClick={() => handleSquareClick(r, c)} className={`square ${selectedHere ? 'selected-square' : ''} ${last ? 'last-move' : ''}`} style={{
+              position: 'absolute',
+              top: r * squareSize,
+              left: c * squareSize,
+              width: squareSize,
+              height: squareSize,
+              backgroundColor: isWhite ? '#1a1a1a' : '#2c2c2c',
+              border: '1px solid #111',
+              boxSizing: 'border-box',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              {valid && <div className="move-hint" />}
+            </div>
+          );
+        }))}
 
-        {board.flatMap((rowArr, r) =>
-          rowArr.map((piece, c) => {
-            if (!piece) return null;
-            return (
-              <Piece
-                key={`${piece.type}-${piece.color}-${r}-${c}`}
-                piece={piece}
-                row={r}
-                col={c}
-                lastMove={lastMove}
-                squareSize={squareSize}
-                onClick={() => handleSquareClick(r, c)}
-                selected={selected && selected.row === r && selected.col === c}
-              />
-            );
-          })
-        )}
+        {board.flatMap((rowArr, r) => rowArr.map((piece, c) => {
+          if (!piece) return null;
+          return (
+            <Piece
+              key={`${piece.type}-${piece.color}-${r}-${c}`}
+              piece={piece}
+              row={r}
+              col={c}
+              lastMove={lastMove}
+              squareSize={squareSize}
+              onClick={() => handleSquareClick(r, c)}
+              selected={selected && selected.row === r && selected.col === c}
+            />
+          );
+        }))}
 
         <AnimatePresence>
           {explosions.map(exp => (
-            <motion.div
-              key={exp.id}
-              initial={{ scale: 0, opacity: 1 }}
-              animate={{ scale: 2.5, opacity: 0 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.7 }}
-              style={{
-                position: 'absolute',
-                top: exp.row * squareSize,
-                left: exp.col * squareSize,
-                width: squareSize,
-                height: squareSize,
-                borderRadius: '50%',
-                background: 'radial-gradient(circle, orange, red, transparent)',
-                pointerEvents: 'none',
-                zIndex: 5,
-              }}
-            />
+            <motion.div key={exp.id} initial={{ scale: 0, opacity: 1 }} animate={{ scale: 2.5, opacity: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.7 }} style={{
+              position: 'absolute',
+              top: exp.row * squareSize,
+              left: exp.col * squareSize,
+              width: squareSize,
+              height: squareSize,
+              borderRadius: '50%',
+              background: 'radial-gradient(circle, orange, red, transparent)',
+              pointerEvents: 'none',
+              zIndex: 5,
+            }} />
           ))}
         </AnimatePresence>
 
