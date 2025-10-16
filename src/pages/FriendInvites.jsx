@@ -44,7 +44,10 @@ export const FriendInvites = ({ user }) => {
     setInvites(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
   };
 
-  useEffect(() => { fetchInvites(); }, []);
+  useEffect(() => {
+  if (user?.uid) fetchInvites();
+}, [user?.uid]);
+
 
   const handleAccept = async (invite) => {
     await updateDoc(doc(db, "game_invites", invite.id), { status: "accepted" });

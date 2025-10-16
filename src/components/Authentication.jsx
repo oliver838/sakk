@@ -3,6 +3,7 @@ import { auth, db } from "../firebaseConfig";
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  updateProfile
 } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 
@@ -18,32 +19,54 @@ export const Authentication = ({ onLogin }) => {
     setError("");
 
     try {
-      if (isRegister) {
-        // 🔹 1️⃣ Létrehozzuk a felhasználót
-        const userCredential = await createUserWithEmailAndPassword(
-          auth,
-          email,
-          password
-        );
-        const user = userCredential.user;
+        if (isRegister) {
+            // 🔹 Ellenőrizzük, hogy a username már foglalt-e
+            const userQuery = query(collection(db, "users"), where("username", "==", username));
+            const snapshot = await getDocs(userQuery);
+            if (!snapshot.empty) {
+                setError("This username is already taken!");
+                return;
+            }
 
-        // 🔹 2️⃣ Mentjük Firestore-ba az extra adatokat
-        await setDoc(doc(db, "users", user.uid), {
-          uid: user.uid,
-          email,
-          username,
-        });
-      } else {
-        await signInWithEmailAndPassword(auth, email, password);
-      }
+            // 🔹 Regisztráció
+            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            const user = userCredential.user;
 
-      // 🔹 3️⃣ Visszaadjuk a bejelentkezett user-t a fő App.jsx-nek
-      onLogin(auth.currentUser);
+            // 🔹 Username mentése az Auth user-be
+            await updateProfile(user, { displayName: username });
+
+            // 🔹 Extra adatok mentése Firestore-ba
+            await setDoc(doc(db, "users", user.uid), {
+                uid: user.uid,
+                email,
+                username,
+            });
+
+            // 🔹 Visszaadjuk az aktuális user-t a fő App-nek
+            onLogin({ ...user, username });
+            } else {
+            // 🔹 Bejelentkezés
+            const userCredential = await signInWithEmailAndPassword(auth, email, password);
+            const user = userCredential.user;
+
+            // 🔹 Lekérjük Firestore-ból a username-t
+            const docSnap = await getDoc(doc(db, "users", user.uid));
+            if (docSnap.exists()) {
+                onLogin({ ...user, ...docSnap.data() });
+            } else {
+                onLogin(user);
+            }
+            }
+
+
+        // 🔹 Visszaadjuk az aktuális user-t a fő App-nek
+        onLogin(auth.currentUser);
     } catch (err) {
-      console.error(err);
-      setError(err.message);
+        console.error(err);
+        setError(err.message);
     }
-  };
+    
+    };
 
   const handleSwap = () => {
     setIsRegister(!isRegister);
@@ -53,8 +76,10 @@ export const Authentication = ({ onLogin }) => {
   };
 
   useEffect(() => {
+    // Alapértelmezett állapot
     setEmail("");
     setPassword("");
+    setUsername("");
     setIsRegister(false);
   }, []);
 
