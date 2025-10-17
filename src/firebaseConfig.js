@@ -16,4 +16,6 @@ const firebaseConfig = {
 // Initialize Firebase
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db = getFirestore(app); // <-- ide kell az 'app'
+
+// ✅ Real-time optimalizált Firestore
+export const db = getFirestore(app);

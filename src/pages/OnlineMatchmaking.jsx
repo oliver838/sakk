@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import { Menu } from "../components/Menu";
 import { useNavigate } from "react-router-dom";
+import { Menu } from "../components/Menu";
 
 export const OnlineMatchmaking = ({ user, setUser }) => {
   const navigate = useNavigate();
@@ -9,6 +9,7 @@ export const OnlineMatchmaking = ({ user, setUser }) => {
   const handleRandomMatch = async () => {
     setLoading(true);
     try {
+      // Példa: findOrCreateGame user.uid alapján
       const { id, color } = await findOrCreateGame(user.uid);
       navigate(`/chess?gameId=${id}&color=${color}`);
     } catch (err) {

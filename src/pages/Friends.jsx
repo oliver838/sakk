@@ -1,119 +1,163 @@
+// Friends.jsx
 import React, { useState, useEffect } from "react";
 import { db } from "../firebaseConfig";
-import { collection, query, where, getDocs, addDoc, updateDoc, doc, serverTimestamp } from "firebase/firestore";
-import { v4 as uuidv4 } from "uuid"; // ha nincs, telepítsd: npm i uuid
+import { collection, query, where, addDoc, updateDoc, doc, serverTimestamp, getDocs, onSnapshot } from "firebase/firestore";
+import { useNavigate } from "react-router-dom";
+import { v4 as uuidv4 } from "uuid";
 
 export const Friends = ({ user }) => {
-  const [friendUsername, setFriendUsername] = useState("");
+  const [friendName, setFriendName] = useState("");
   const [friends, setFriends] = useState([]);
   const [requests, setRequests] = useState([]);
+  const navigate = useNavigate();
 
-  // --- Fetch friends ---
-  const fetchFriends = async () => {
+  // 🔹 Friends realtime listener
+  useEffect(() => {
+    if (!user?.uid) return;
     const q = query(collection(db, "friends"), where("userId", "==", user.uid));
-    const snapshot = await getDocs(q);
-    setFriends(snapshot.docs.map(doc => doc.data()));
-  };
+    const unsubscribe = onSnapshot(q, snapshot => {
+      const friendList = snapshot.docs.map(doc => doc.data());
+      setFriends(friendList);
+    });
+    return () => unsubscribe();
+  }, [user?.uid]);
 
-  // --- Fetch pending friend requests ---
-  const fetchRequests = async () => {
+  // 🔹 Pending requests listener
+  useEffect(() => {
+    if (!user?.uid) return;
     const q = query(
       collection(db, "friend_requests"),
       where("toUserId", "==", user.uid),
       where("status", "==", "pending")
     );
-    const snapshot = await getDocs(q);
-    setRequests(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-  };
+    const unsubscribe = onSnapshot(q, snapshot => {
+      const reqList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setRequests(reqList);
+    });
+    return () => unsubscribe();
+  }, [user?.uid]);
 
-  useEffect(() => {
-    fetchFriends();
-    fetchRequests();
-  }, []);
-
-  // --- Add Friend ---
+  // 🔹 Add friend
   const handleAddFriend = async () => {
-    if (!friendUsername) return;
-    const userQuery = query(collection(db, "users"), where("username", "==", friendUsername));
+    if (!friendName || !user?.uid) return;
+
+    const userQuery = query(
+      collection(db, "users"),
+      where("publicProfile.displayName", "==", friendName)
+    );
     const snapshot = await getDocs(userQuery);
 
-    if (!snapshot.empty) {
-      const friendData = snapshot.docs[0].data();
-      if (friendData.uid === user.uid) {
-        alert("You can’t add yourself 😅");
-        return;
-      }
+    if (snapshot.empty) {
+      alert("No user found with that display name!");
+      return;
+    }
 
-      const reqQuery = query(
-        collection(db, "friend_requests"),
-        where("fromUserId", "==", user.uid),
-        where("toUserId", "==", friendData.uid),
-        where("status", "==", "pending")
-      );
-      const existingReq = await getDocs(reqQuery);
-      if (!existingReq.empty) {
-        alert("Friend request already sent!");
-        return;
-      }
+    const friendData = snapshot.docs[0].data();
+    const friendUid = snapshot.docs[0].id;
 
-      await addDoc(collection(db, "friend_requests"), {
-        fromUserId: user.uid,
-        fromUsername: user.username,
-        toUserId: friendData.uid,
-        status: "pending",
+    if (friendUid === user.uid) {
+      alert("You can't add yourself 😅");
+      return;
+    }
+
+    const friendsQuery = query(
+      collection(db, "friends"),
+      where("userId", "==", user.uid),
+      where("friendId", "==", friendUid)
+    );
+    const friendsSnapshot = await getDocs(friendsQuery);
+    if (!friendsSnapshot.empty) {
+      alert("You are already friends with this user!");
+      return;
+    }
+
+    const reqQuery = query(
+      collection(db, "friend_requests"),
+      where("fromUserId", "==", user.uid),
+      where("toUserId", "==", friendUid),
+      where("status", "==", "pending")
+    );
+    const existingReq = await getDocs(reqQuery);
+    if (!existingReq.empty) {
+      alert("Friend request already sent!");
+      return;
+    }
+
+    await addDoc(collection(db, "friend_requests"), {
+      fromUserId: user.uid,
+      fromDisplayName: user.displayName,
+      toUserId: friendUid,
+      toDisplayName: friendData.publicProfile.displayName,
+      status: "pending",
+      createdAt: serverTimestamp()
+    });
+
+    alert("Friend request sent!");
+    setFriendName("");
+  };
+
+  // 🔹 Accept friend request
+  const handleAccept = async (request) => {
+    try {
+      await updateDoc(doc(db, "friend_requests", request.id), { status: "accepted" });
+
+      const userFriendData = {
+        userId: user.uid,
+        friendId: request.fromUserId,
+        friendDisplayName: request.fromDisplayName,
         createdAt: serverTimestamp(),
-      });
+      };
+      const friendUserData = {
+        userId: request.fromUserId,
+        friendId: user.uid,
+        friendDisplayName: user.displayName,
+        createdAt: serverTimestamp(),
+      };
 
-      alert("Friend request sent!");
-      setFriendUsername("");
-    } else {
-      alert("No user found with that username!");
+      await addDoc(collection(db, "friends"), userFriendData);
+      await addDoc(collection(db, "friends"), friendUserData);
+    } catch (err) {
+      console.error("Error accepting friend:", err);
+      alert("Error accepting friend. Check console.");
     }
   };
 
-  // --- Accept Friend Request ---
-  const handleAccept = async (request) => {
-    await updateDoc(doc(db, "friend_requests", request.id), { status: "accepted" });
-
-    await addDoc(collection(db, "friends"), {
-      userId: user.uid,
-      friendId: request.fromUserId,
-      friendUsername: request.fromUsername,
-      createdAt: serverTimestamp(),
-    });
-
-    await addDoc(collection(db, "friends"), {
-      userId: request.fromUserId,
-      friendId: user.uid,
-      friendUsername: user.username,
-      createdAt: serverTimestamp(),
-    });
-
-    setRequests(prev => prev.filter(r => r.id !== request.id));
-    fetchFriends();
-  };
-
-  // --- Reject Friend Request ---
   const handleReject = async (request) => {
     await updateDoc(doc(db, "friend_requests", request.id), { status: "rejected" });
-    setRequests(prev => prev.filter(r => r.id !== request.id));
   };
 
-  // --- Invite to Game ---
+  // 🔹 Invite friend to game
   const handleInvite = async (friend) => {
-    const gameId = uuidv4();
-    await addDoc(collection(db, "game_invites"), {
-      fromUserId: user.uid,
-      fromUsername: user.username,
-      toUserId: friend.friendId,
-      toUsername: friend.friendUsername,
-      status: "pending",
-      gameId,
-      createdAt: serverTimestamp(),
-    });
+  const gameId = uuidv4();
 
-    alert(`Game invite sent to ${friend.friendUsername}!`);
-  };
+  // 🔹 Létrehozunk egy game doksit
+  await addDoc(collection(db, "games"), {
+    gameId,
+    players: [
+      { uid: user.uid, displayName: user.displayName, color: "white" },
+      { uid: friend.friendId, displayName: friend.friendDisplayName, color: "black" }
+    ],
+    status: "waiting", // vagy "active", ha azonnal indítod
+    createdAt: serverTimestamp()
+  });
+
+  // 🔹 Létrehozunk egy invite doksit is a meghívottnak
+  await addDoc(collection(db, "game_invites"), {
+    fromUserId: user.uid,
+    fromDisplayName: user.displayName,
+    toUserId: friend.friendId,
+    toDisplayName: friend.friendDisplayName,
+    status: "pending",
+    gameId,
+    createdAt: serverTimestamp()
+  });
+
+  alert(`Game invite sent to ${friend.friendDisplayName}!`);
+
+  // 🔹 Navigálás a meghívó oldalán is
+  navigate(`/game/${gameId}`, { state: { playerColor: "white" } });
+};
+
 
   return (
     <div className="flex flex-col items-center justify-start min-h-screen p-6 bg-gray-50">
@@ -123,9 +167,9 @@ export const Friends = ({ user }) => {
       <div className="flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-4 mb-8">
         <input
           type="text"
-          placeholder="Friend's username"
-          value={friendUsername}
-          onChange={(e) => setFriendUsername(e.target.value)}
+          placeholder="Friend's display name"
+          value={friendName}
+          onChange={(e) => setFriendName(e.target.value)}
           className="p-2 rounded-lg border border-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
         />
         <button
@@ -147,7 +191,7 @@ export const Friends = ({ user }) => {
                 className="p-2 bg-white rounded-lg shadow flex items-center cursor-pointer hover:bg-purple-100 transition"
                 onClick={() => handleInvite(f)}
               >
-                👤 {f.friendUsername}
+                👤 {f.friendDisplayName}
               </li>
             ))}
           </ul>
@@ -163,7 +207,7 @@ export const Friends = ({ user }) => {
           <ul className="space-y-2">
             {requests.map((r) => (
               <li key={r.id} className="p-2 bg-white rounded-lg shadow flex justify-between items-center">
-                <span>👤 {r.fromUsername}</span>
+                <span>👤 {r.fromDisplayName}</span>
                 <div className="space-x-2">
                   <button
                     onClick={() => handleAccept(r)}

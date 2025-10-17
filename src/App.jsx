@@ -1,9 +1,7 @@
-// App.jsx
 import { useState, useEffect } from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { onAuthStateChanged } from "firebase/auth";
-import { auth, db } from "./firebaseConfig";
-import { doc, getDoc } from "firebase/firestore";
+import { auth } from "./firebaseConfig";
 import "./App.css";
 
 import { Board } from "./components/Board";
@@ -16,86 +14,92 @@ import { FriendInvites } from "./pages/FriendInvites";
 import { BoardWrapper } from "./components/BoardWrapper";
 
 function App() {
-  const [user, setUser] = useState(null); // most ez tartalmaz mindent
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
-  const startLocalGame = () => {
-    window.location.href = "/chess";
-  };
+  // 🔹 Játék indítási függvények
+  const startLocalGame = () => navigate("/chess");
+  const startOnlineGame = () => navigate("/online");
 
-  const startOnlineGame = () => {
-    window.location.href = "/online";
-  };
-
+  // 🔹 Auth figyelés
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      if (currentUser) {
-        try {
-          const docRef = doc(db, "users", currentUser.uid);
-          const docSnap = await getDoc(docRef);
-          if (docSnap.exists()) {
-            // 🔹 Firestore-ból jövő adatok hozzáadása a user objektumhoz
-            setUser({ ...currentUser, ...docSnap.data() });
-          } else {
-            setUser(currentUser); // ha nincs Firestore dokumentum
-          }
-        } catch (err) {
-          console.error("Failed to fetch user data:", err);
-          setUser(currentUser);
-        }
-      } else {
-        setUser(null);
-      }
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser ? {
+        uid: currentUser.uid,
+        email: currentUser.email,
+        displayName: currentUser.displayName  // <- username helyett displayName
+      } : null);
+
       setLoading(false);
     });
-
     return () => unsubscribe();
   }, []);
 
-  if (loading) return <div>Loading...</div>;
+  if (loading) {
+    return <div className="flex items-center justify-center h-screen text-lg">Loading...</div>;
+  }
 
   return (
-    <Router>
+    <>
+      {/* 🔹 Menu csak ha be van jelentkezve */}
       {user && (
-        <Menu
-          user={user}
-          setUser={setUser}
-          onStartLocal={startLocalGame}
-          onStartOnline={startOnlineGame}
-        />
+        <Menu setUser={setUser} onStartLocal={startLocalGame} onStartOnline={startOnlineGame} />
       )}
+
       <Routes>
+        {/* 🔹 Login */}
         <Route
           path="/login"
-          element={!user ? <Authentication onLogin={(u) => setUser(u)} /> : <Navigate to="/home" />}
+          element={!user ? <Authentication onLogin={setUser} /> : <Navigate to="/home" />}
         />
+
+        {/* 🔹 Home */}
         <Route
           path="/home"
-          element={user ? <Home user={user} setUser={setUser} onStartLocal={startLocalGame} onStartOnline={startOnlineGame} /> : <Navigate to="/login" />}
+          element={user ? <Home setUser={setUser} onStartLocal={startLocalGame} onStartOnline={startOnlineGame} /> : <Navigate to="/login" />}
         />
+
+        {/* 🔹 Online matchmaking */}
         <Route
           path="/online"
-          element={user ? <OnlineMatchmaking user={user} /> : <Navigate to="/login" />}
+          element={user ? <OnlineMatchmaking user={user} setUser={setUser} /> : <Navigate to="/login" />}
         />
+
+        {/* 🔹 Friends */}
         <Route
           path="/friends"
           element={user ? <Friends user={user} /> : <Navigate to="/login" />}
         />
+
+        {/* 🔹 Friend invites */}
         <Route
           path="/friendinvites"
           element={user ? <FriendInvites user={user} /> : <Navigate to="/login" />}
         />
+
+        {/* 🔹 Online game board */}
         <Route
           path="/game/:gameId"
           element={user ? <BoardWrapper user={user} /> : <Navigate to="/login" />}
         />
+
+        {/* 🔹 Local game */}
         <Route
           path="/chess"
-          element={user ? <Board gameMode="local" playerColor="white" user={user} /> : <Navigate to="/login" />}
+          element={
+            user ? (
+              <Board gameMode="local" playerColor="white" user={user} />
+            ) : (
+              <Navigate to="/login" />
+            )
+          }
         />
+
+        {/* 🔹 Default */}
         <Route path="*" element={<Navigate to={user ? "/home" : "/login"} />} />
       </Routes>
-    </Router>
+    </>
   );
 }
 

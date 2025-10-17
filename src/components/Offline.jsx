@@ -2,97 +2,51 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import './halloween-chess.css';
-import { doc, onSnapshot, updateDoc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
-import { db, auth } from "../firebaseConfig";
+import { doc, onSnapshot, updateDoc } from "firebase/firestore";
+import { db } from "../firebaseConfig";
 import { Piece } from './Piece';
 
-export const Board = ({ onlineGameId, playerColor, gameMode }) => {
+export const Offline = ({ onlineGameId, playerColor, gameMode }) => {
   const wrapperRef = useRef(null);
   const [selected, setSelected] = useState(null);
   const [lastMove, setLastMove] = useState(null);
   const [validMoves, setValidMoves] = useState([]);
   const [currentTurn, setCurrentTurn] = useState('white');
+  const [flashCells, setFlashCells] = useState([]);
   const [boardWidth, setBoardWidth] = useState(880);
   const [explosions, setExplosions] = useState([]);
-  const [bothPlayersJoined, setBothPlayersJoined] = useState(false);
-
-  const [board, setBoard] = useState(Array(8).fill(null).map(() => Array(8).fill(null)));
-  const [gameStatus, setGameStatus] = useState(null); // null | 'checkmate' | 'stalemate'
+  const [board, setBoard] = useState(
+    Array(8).fill(null).map(() => Array(8).fill(null))
+  );
 
   const squareSize = boardWidth / 8;
   const isPlayerTurn = playerColor === currentTurn || gameMode === "local";
 
-  // 🔹 Firestore <-> 2D tömb
-  const firestoreToBoard = (data) => {
-    if (!data) return getInitialBoard();
-    return Array(8).fill(null).map((_, r) =>
-      Array(8).fill(null).map((_, c) => data[`${r}-${c}`] || null)
-    );
-  };
-  const boardToFirestore = (boardArray) => {
-    const obj = {};
-    boardArray.forEach((row, r) => {
-      row.forEach((cell, c) => {
-        if (cell) obj[`${r}-${c}`] = cell;
-      });
-    });
-    return obj;
-  };
-
-  // 🔹 Init board
+  // Flashing cells
   useEffect(() => {
-    const initBoard = async () => {
-      const user = auth.currentUser;
-      if (!onlineGameId) {
-        setBoard(getInitialBoard());
-        return;
-      }
+    const interval = setInterval(() => {
+      const randRow = Math.floor(Math.random() * 8);
+      const randCol = Math.floor(Math.random() * 8);
+      setFlashCells([{ row: randRow, col: randCol }]);
+      setTimeout(() => setFlashCells([]), 500);
+    }, 2000 + Math.random() * 2000);
+    return () => clearInterval(interval);
+  }, []);
 
-      const gameRef = doc(db, "games", onlineGameId);
-      const snapshot = await getDoc(gameRef);
-      let newBoard = getInitialBoard();
+  // Firestore subscription (online only)
+  useEffect(() => {
+    if (!onlineGameId) return;
+    const unsub = onSnapshot(doc(db, "games", onlineGameId), (snapshot) => {
+      const data = snapshot.data();
+      if (!data) return;
+      setBoard(data.board);
+      setCurrentTurn(data.currentTurn);
+      setLastMove(data.lastMove || null);
+    });
+    return () => unsub();
+  }, [onlineGameId]);
 
-      if (!snapshot.exists()) {
-        const players = playerColor === "white"
-          ? { white: user?.uid || null, black: null }
-          : { white: null, black: user?.uid || null };
-
-        await setDoc(gameRef, {
-          board: boardToFirestore(newBoard),
-          currentTurn: 'white',
-          lastMove: null,
-          players,
-          createdAt: serverTimestamp(),
-        });
-      } else {
-        const data = snapshot.data();
-        if (data.board) newBoard = firestoreToBoard(data.board);
-        setCurrentTurn(data.currentTurn || 'white');
-        setLastMove(data.lastMove || null);
-      }
-
-      setBoard(newBoard);
-
-      const unsub = onSnapshot(gameRef, snapshot => {
-        const data = snapshot.data();
-        if (!data) return;
-
-        setBoard(firestoreToBoard(data.board));
-        setCurrentTurn(data.currentTurn);
-        setLastMove(data.lastMove || null);
-        setSelected(null);
-        setValidMoves([]);
-
-        setBothPlayersJoined(!!data.players.white && !!data.players.black);
-      });
-
-      return () => unsub();
-    };
-
-    initBoard();
-  }, [onlineGameId, playerColor]);
-
-  // 🔹 Board resize
+  // Board resize
   useEffect(() => {
     const updateWidth = () => {
       if (wrapperRef.current) {
@@ -106,8 +60,12 @@ export const Board = ({ onlineGameId, playerColor, gameMode }) => {
     return () => ro.disconnect();
   }, []);
 
-  // 🔹 Board & pieces
-  const getInitialBoard = () => {
+  // Initial pieces only if offline
+  useEffect(() => {
+    if (!onlineGameId) setupInitialPieces();
+  }, [onlineGameId]);
+
+  const setupInitialPieces = () => {
     const newBoard = Array(8).fill(null).map(() => Array(8).fill(null));
     newBoard[0] = [
       { type: 'rook', color: 'black', symbol: '♜' },
@@ -131,10 +89,10 @@ export const Board = ({ onlineGameId, playerColor, gameMode }) => {
       { type: 'knight', color: 'white', symbol: '♘' },
       { type: 'rook', color: 'white', symbol: '♖' },
     ];
-    return newBoard;
+    setBoard(newBoard);
   };
 
-  // 🔹 Move helpers
+  // Helpers
   const simulateMove = (boardState, fromRow, fromCol, toRow, toCol) => {
     const newBoard = boardState.map(row => row.map(cell => (cell ? { ...cell } : null)));
     newBoard[toRow][toCol] = newBoard[fromRow][fromCol];
@@ -164,19 +122,14 @@ export const Board = ({ onlineGameId, playerColor, gameMode }) => {
 
     if (type === 'pawn') {
       if (piece.color === 'white') {
-    // Egy lépés előre
         if (fromCol === toCol && !target && toRow === fromRow - 1) return true;
-        // Két lépés az első pozícióról
-        if (fromCol === toCol && !target && fromRow === 6 && !boardState[5][fromCol] && toRow === 4) return true;
-        // Átlós ütés
+        if (fromCol === toCol && !target && fromRow === 6 && toRow === 4) return true;
         if (Math.abs(toCol - fromCol) === 1 && toRow === fromRow - 1 && target) return true;
       } else {
-          // Fekete paraszt
-          if (fromCol === toCol && !target && toRow === fromRow + 1) return true;
-          if (fromCol === toCol && !target && fromRow === 1 && !boardState[2][fromCol] && toRow === 3) return true;
-          if (Math.abs(toCol - fromCol) === 1 && toRow === fromRow + 1 && target) return true;
+        if (fromCol === toCol && !target && toRow === fromRow + 1) return true;
+        if (fromCol === toCol && !target && fromRow === 1 && toRow === 3) return true;
+        if (Math.abs(toCol - fromCol) === 1 && toRow === fromRow + 1 && target) return true;
       }
-
     } else if (type === 'bishop') {
       if (Math.abs(fromCol - toCol) === Math.abs(fromRow - toRow)) return isPathClear(fromRow, fromCol, toRow, toCol, boardState);
     } else if (type === 'rook') {
@@ -230,37 +183,12 @@ export const Board = ({ onlineGameId, playerColor, gameMode }) => {
     return moves;
   };
 
-  const hasAnyValidMove = (color) => {
-    for (let r = 0; r < 8; r++) {
-      for (let c = 0; c < 8; c++) {
-        const piece = board[r][c];
-        if (piece && piece.color === color && getValidMoves(r, c).length > 0) return true;
-      }
-    }
-    return false;
-  };
-
-  const updateGameStatus = () => {
-    if (isKingInCheck(currentTurn, board) && !hasAnyValidMove(currentTurn)) {
-      setGameStatus('checkmate');
-    } else if (!isKingInCheck(currentTurn, board) && !hasAnyValidMove(currentTurn)) {
-      setGameStatus('stalemate');
-    } else {
-      setGameStatus(null);
-    }
-  };
-
-  useEffect(updateGameStatus, [board, currentTurn]);
-
-  const handleSquareClick = async (row, col) => {
-
-    if (!isPlayerTurn && gameMode !== 'locale') return;
-    
+  const handleSquareClick = (row, col) => {
+    if (!isPlayerTurn) return;
     const piece = board[row][col];
-   if (!selected && piece && gameMode === 'local' && piece.color !== playerColor) return;
-
+    if (!selected && piece && gameMode!='local' && piece.color !== playerColor) return;
+    
     if (!selected && piece && piece.color !== currentTurn) return;
-
     if (selected) {
       if (piece && piece.color === board[selected.row][selected.col].color) {
         setSelected({ row, col });
@@ -271,24 +199,28 @@ export const Board = ({ onlineGameId, playerColor, gameMode }) => {
       if (isValidMove(selected.row, selected.col, row, col)) {
         const target = board[row][col];
         const testBoard = simulateMove(board, selected.row, selected.col, row, col);
-
         if (!isKingInCheck(currentTurn, testBoard)) {
           setBoard(testBoard);
           setLastMove({ fromRow: selected.row, fromCol: selected.col, toRow: row, toCol: col, captured: !!target });
 
-          const nextTurn = currentTurn === 'white' ? 'black' : 'white';
-          setCurrentTurn(nextTurn);
-
-          if (onlineGameId) {
-            const gameRef = doc(db, "games", onlineGameId);
-            await updateDoc(gameRef, {
-              board: boardToFirestore(testBoard),
-              currentTurn: nextTurn,
-              lastMove: { fromRow: selected.row, fromCol: selected.col, toRow: row, toCol: col, captured: !!target }
-            });
+          if (target) {
+            const id = Date.now();
+            setExplosions(prev => [...prev, { id, row, col }]);
+            setTimeout(() => setExplosions(prev => prev.filter(e => e.id !== id)), 700);
           }
-        }
 
+          setCurrentTurn(prev => {
+            const next = prev === 'white' ? 'black' : 'white';
+            if (onlineGameId) {
+              updateDoc(doc(db, "games", onlineGameId), {
+                board: testBoard,
+                currentTurn: next,
+                lastMove: { fromRow: selected.row, fromCol: selected.col, toRow: row, toCol: col, captured: !!target }
+              });
+            }
+            return next;
+          });
+        }
         setSelected(null);
         setValidMoves([]);
         return;
@@ -305,26 +237,12 @@ export const Board = ({ onlineGameId, playerColor, gameMode }) => {
   const isInValidMoves = (r, c) => validMoves.some(m => m.row === r && m.col === c);
   const isLastMoveSquare = (r, c) => lastMove && ((lastMove.fromRow === r && lastMove.fromCol === c) || (lastMove.toRow === r && lastMove.toCol === c));
 
-   return (
+  return (
     <div ref={wrapperRef} style={{ width: '100%', maxWidth: 700, margin: 'auto' }}>
-      <div style={{ textAlign: 'center', marginBottom: 8 }}>
-        <div className="turn-indicator" style={{ color: isKingInCheck(currentTurn, board) ? 'red' : 'white' }}>
-          {gameStatus === 'checkmate' && `Checkmate! ${currentTurn === 'white' ? 'Black' : 'White'} wins`}
-          {gameStatus === 'stalemate' && 'Stalemate! Draw'}
-          {!gameStatus && `${currentTurn === 'white' ? "White's turn" : "Black's turn"}${isKingInCheck(currentTurn, board) ? ' — Check!' : ''}`}
-        </div>
-      </div>
-
-      <div className="chess-board" style={{
-        position: 'relative',
-        width: boardWidth,
-        height: boardWidth,
-        border: '2px solid #333',
-        margin: 'auto',
-        transformOrigin: 'center center'
-      }}>
+      <div className="chess-board" style={{ position: 'relative', width: boardWidth, height: boardWidth, border: '2px solid #333', margin: 'auto', transform: playerColor === 'black' ? 'rotate(180deg)' : 'none' }}>
         {Array(8).fill(0).map((_, r) => Array(8).fill(0).map((_, c) => {
           const isWhite = (r + c) % 2 === 0;
+          const flash = flashCells.some(f => f.row === r && f.col === c);
           const valid = isInValidMoves(r, c);
           const last = isLastMoveSquare(r, c);
           const selectedHere = selected && selected.row === r && selected.col === c;
@@ -342,7 +260,6 @@ export const Board = ({ onlineGameId, playerColor, gameMode }) => {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              WebkitTapHighlightColor: 'transparent'
             }}>
               {valid && <div className="move-hint" />}
             </div>
@@ -361,14 +278,34 @@ export const Board = ({ onlineGameId, playerColor, gameMode }) => {
               squareSize={squareSize}
               onClick={() => handleSquareClick(r, c)}
               selected={selected && selected.row === r && selected.col === c}
-              playerColor={playerColor} // a Piece-nek így már nem kell külön rotate
             />
           );
         }))}
 
+        <AnimatePresence>
+          {explosions.map(exp => (
+            <motion.div key={exp.id} initial={{ scale: 0, opacity: 1 }} animate={{ scale: 2.5, opacity: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.7 }} style={{
+              position: 'absolute',
+              top: exp.row * squareSize,
+              left: exp.col * squareSize,
+              width: squareSize,
+              height: squareSize,
+              borderRadius: '50%',
+              background: 'radial-gradient(circle, orange, red, transparent)',
+              pointerEvents: 'none',
+              zIndex: 5,
+            }} />
+          ))}
+        </AnimatePresence>
+
+        <div style={{ position: 'absolute', top: -36, left: 0, right: 0, textAlign: 'center', zIndex: 10 }}>
+          <div className="turn-indicator" style={{ color: isKingInCheck(currentTurn, board) ? 'red' : 'white' }}>
+            {currentTurn === 'white' ? 'White' : 'Black'}'s turn {isKingInCheck(currentTurn, board) ? ' — Check!' : ''}
+          </div>
+        </div>
       </div>
     </div>
   );
 };
 
-export default Board;
+export default Offline;

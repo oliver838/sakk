@@ -10,7 +10,20 @@
   font-weight: 400; /* vékonyabb, finomabb */
   filter: drop-shadow(0 0 6px rgba(114, 9, 183, 0.6));
   transition: transform 0.15s ease, filter 0.3s ease;
+ 
+  -webkit-tap-highlight-color: transparent; /* Chrome, Safari, Android */
+  -moz-tap-highlight-color: transparent;    /* Firefox (régebbi) */
+  -ms-tap-highlight-color: transparent;     /* IE/Edge */
+
+
 }
+.square, .chess-board, .square * {
+    -webkit-tap-highlight-color: transparent;
+    -moz-tap-highlight-color: transparent;    /* Firefox (régebbi) */
+    -ms-tap-highlight-color: transparent; 
+}
+
+
 
 .chess-piece:hover {
   transform: scale(1.1);
