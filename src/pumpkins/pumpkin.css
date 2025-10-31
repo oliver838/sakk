@@ -1,0 +1,40 @@
+.global-pumpkin-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none; /* ne zavarja a kattintásokat */
+  z-index: 999; /* szükség szerint állítsd */
+  overflow: hidden;
+}
+
+.global-pumpkin {
+  position: absolute;
+  font-size: 28px;
+  user-select: none;
+  will-change: transform, opacity;
+  animation: global-pumpkin-dance 1.8s ease-in-out infinite;
+  text-shadow: 0 6px 10px rgba(0,0,0,0.6);
+  opacity: 0.98;
+}
+
+@keyframes global-pumpkin-dance {
+  0%   { transform: translate(-50%, -50%) translateY(0) rotate(0deg) scale(1); }
+  25%  { transform: translate(-50%, -50%) translateY(-12px) rotate(-8deg) scale(1.05); }
+  50%  { transform: translate(-50%, -50%) translateY(0) rotate(8deg) scale(0.98); }
+  75%  { transform: translate(-50%, -50%) translateY(-8px) rotate(-4deg) scale(1.02); }
+  100% { transform: translate(-50%, -50%) translateY(0) rotate(0deg) scale(1); }
+}
+
+/* mute gomb pointer-events: auto, hogy kattintható legyen */
+.global-pumpkin-mute {
+  pointer-events: auto;
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 1000;
+  padding: 8px 10px;
+  background: rgba(0,0,0,0.6);
+  color: #fff;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.06);
+  cursor: pointer;
+}

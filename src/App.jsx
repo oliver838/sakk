@@ -12,6 +12,9 @@ import { OnlineMatchmaking } from "./pages/OnlineMatchmaking";
 import { Friends } from "./pages/Friends";
 import { FriendInvites } from "./pages/FriendInvites";
 import { BoardWrapper } from "./components/BoardWrapper";
+import { PumpkinOverlay } from "./pumpkins/PumpkinOverlay";
+import { PumpkinProvider } from "./pumpkins/PumpkinContext";
+// App.jsx (felső importokhoz adj hozzá:)
 
 function App() {
   const [user, setUser] = useState(null);
@@ -41,12 +44,14 @@ function App() {
   }
 
   return (
+
     <>
+    <PumpkinProvider>
       {/* 🔹 Menu csak ha be van jelentkezve */}
       {user && (
         <Menu setUser={setUser} onStartLocal={startLocalGame} onStartOnline={startOnlineGame} />
       )}
-
+       <PumpkinOverlay />
       <Routes>
         {/* 🔹 Login */}
         <Route
@@ -99,6 +104,7 @@ function App() {
         {/* 🔹 Default */}
         <Route path="*" element={<Navigate to={user ? "/home" : "/login"} />} />
       </Routes>
+       </PumpkinProvider>
     </>
   );
 }

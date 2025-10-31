@@ -22,6 +22,15 @@
   border-radius: 4px;
 }
 
+/* átlátszó blocker, ami megakadályozza a kattintásokat és mutatja, hogy "wait" van */
+.board-blocker {
+  position: absolute;
+  inset: 0; /* top:0; right:0; bottom:0; left:0; */
+  z-index: 200; /* legyen a piece-ek fölött, de UI elemek alatt ha szükséges - igazítsd ha kell */
+  pointer-events: auto; /* fogja a kattintásokat */
+  background: rgba(0,0,0,0); /* teljesen átlátszó */
+  cursor: wait; /* vizuális visszajelzés */
+}
 
 .explosion {
   width: 60px;

@@ -1,0 +1,41 @@
+.promotion-popup {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 500;
+  transform: translate(-50%, -110%);
+}
+
+.popup-content {
+  background: #1a1a1f;
+  border: 2px solid #a855f7;
+  box-shadow: 0 0 15px #a855f7aa;
+  border-radius: 12px;
+  padding: 6px 8px;
+  display: flex;
+  gap: 8px;
+}
+
+.promotion-option {
+  font-size: 28px;
+  color: #f5f3ff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-shadow: 0 0 8px #a855f7;
+}
+
+.promotion-option:hover {
+  transform: scale(1.2);
+  text-shadow: 0 0 15px #d946ef;
+}
+
+.popup-arrow {
+  width: 0;
+  height: 0;
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+  border-top: 10px solid #a855f7;
+  filter: drop-shadow(0 0 4px #a855f7);
+  margin-top: 2px;
+}

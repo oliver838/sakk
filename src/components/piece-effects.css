@@ -1,0 +1,154 @@
+/* piece-effects.css - place alongside components and import at top of PieceAdvanced.jsx */
+
+/* ---------- SHADOW FIELD ---------- */
+.shadow-field {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(8px);
+  opacity: 0.85;
+  transform: translateZ(0);
+  pointer-events: none;
+  transition: transform 280ms ease, opacity 260ms ease;
+  box-shadow: 0 10px 35px rgba(0,0,0,0.55);
+}
+.shadow-field.white {
+  background: radial-gradient(ellipse at center, rgba(250,240,255,0.95) 0%, rgba(220,200,255,0.9) 35%, rgba(160,120,220,0.55) 100%);
+}
+.shadow-field.black {
+  background: radial-gradient(ellipse at center, rgba(40,10,40,0.9) 0%, rgba(20,0,20,0.7) 60%, rgba(0,0,0,0.4) 100%);
+}
+.shadow-field.pulse {
+  animation: shadowPulse 900ms ease-in-out infinite;
+}
+@keyframes shadowPulse {
+  0% { transform: scale(1); opacity: 0.9; }
+  50% { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); opacity: 0.9; }
+}
+
+/* ---------- LIGHTNING ---------- */
+.piece-effects { pointer-events: none; }
+.lightning {
+  position: absolute;
+  left: -10%;
+  top: -20%;
+  width: 140%;
+  height: 140%;
+  overflow: visible;
+}
+.lightning .bolt {
+  fill: url(#boltGradient);
+  fill: rgba(255,255,255,0.95);
+  opacity: 0;
+  transform-origin: 50% 50%;
+  transition: opacity 120ms ease;
+  filter: drop-shadow(0 0 14px rgba(200,170,255,0.9));
+}
+.lightning.active .bolt {
+  animation: boltFlash 420ms ease-out forwards;
+}
+@keyframes boltFlash {
+  0% { opacity: 0; transform: scale(0.6) rotate(10deg); filter: blur(8px); }
+  20% { opacity: 1; transform: scale(1.05) rotate(-6deg); filter: blur(2px); }
+  80% { opacity: 0.6; transform: scale(1) rotate(0deg); filter: blur(1px); }
+  100% { opacity: 0; transform: scale(1.2) rotate(6deg); }
+}
+
+/* ---------- CRACK ---------- */
+.crack {
+  position: absolute;
+  left: -10%;
+  bottom: 6%;
+  width: 140%;
+  height: 40%;
+  opacity: 0;
+}
+.crack .crack-path {
+  stroke: rgba(20,10,10,0.95);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 200;
+  stroke-dashoffset: 200;
+  filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5)) blur(0.3px);
+}
+.crack.active {
+  opacity: 1;
+  animation: crackPop 700ms cubic-bezier(.2,.9,.2,1) forwards;
+}
+.crack.active .crack-path {
+  animation: dash 700ms cubic-bezier(.2,.9,.2,1) forwards;
+}
+@keyframes dash {
+  to { stroke-dashoffset: 0; }
+}
+@keyframes crackPop {
+  0% { transform: translateY(4px) scaleY(0.9); opacity: 0; }
+  40% { transform: translateY(-8px) scaleY(1.05); opacity: 1; }
+  100% { transform: translateY(0) scaleY(1); opacity: 1; }
+}
+
+/* ---------- DUST ---------- */
+.dust {
+  position: absolute;
+  left: -7%;
+  bottom: -12%;
+  width: 140%;
+  height: 90%;
+  opacity: 0;
+  transform: translateY(6px);
+}
+.dust .puff {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, rgba(240,220,200,0.95), rgba(200,170,140,0.2));
+  opacity: 0.0;
+  transform: translateY(0) scale(0.6);
+}
+.puff1 { width: 28%; height: 18%; left: 14%; bottom: 8%; }
+.puff2 { width: 22%; height: 14%; left: 44%; bottom: 6%; }
+.puff3 { width: 18%; height: 12%; left: 70%; bottom: 4%; }
+
+.dust.active {
+  opacity: 1;
+  animation: dustRise 800ms ease-out forwards;
+}
+.dust.active .puff1 { animation: puffAnim 900ms ease-out forwards 30ms; }
+.dust.active .puff2 { animation: puffAnim 850ms ease-out forwards 60ms; }
+.dust.active .puff3 { animation: puffAnim 820ms ease-out forwards 90ms; }
+
+@keyframes puffAnim {
+  0% { opacity: 0.0; transform: translateY(0) scale(0.6); filter: blur(0); }
+  30% { opacity: 0.9; transform: translateY(-10px) scale(1.05); filter: blur(0.5px); }
+  100% { opacity: 0; transform: translateY(-28px) scale(1.2); filter: blur(2px); }
+}
+@keyframes dustRise {
+  to { transform: translateY(-10px); opacity: 1; }
+}
+
+/* ---------- PIECE INNER / SYMBOL ---------- */
+.piece-inner {
+  width: 100%;
+  height: 100%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius: 8px;
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+.piece-symbol {
+  transform: translateZ(0);
+  text-shadow: 0 10px 30px rgba(0,0,0,0.35);
+  display:inline-block;
+  line-height: 1;
+}
+
+/* small per-piece accent styling (optional) */
+.piece-inner.king .piece-symbol { font-size: 1.02em; filter: drop-shadow(0 6px 18px rgba(180,100,240,0.6)); }
+.piece-inner.queen .piece-symbol { font-size: 1.05em; filter: drop-shadow(0 8px 22px rgba(235,170,255,0.55)); }
+.piece-inner.rook .piece-symbol { transform: translateY(1px); }
+.piece-inner.knight .piece-symbol { transform: rotate(-6deg) scale(1.06); }
+
+/* ---------- small progressive performance tip: use will-change only for active pieces ---------- */
+/* End of piece-effects.css */
