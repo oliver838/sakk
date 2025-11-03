@@ -27,13 +27,7 @@ export const OnlineMatchmaking = ({ user, setUser }) => {
     <div className="home-container">
       <Menu setUser={setUser} />
       <div className="flex flex-col items-center justify-center h-screen space-y-6">
-        <button
-          onClick={handleRandomMatch}
-          disabled={loading}
-          className="bg-purple-600 text-white text-xl px-8 py-4 rounded-2xl shadow-lg hover:bg-purple-700 transition"
-        >
-          {loading ? "Finding opponent..." : "🎲 Random Opponent"}
-        </button>
+       
 
         <button
           onClick={handlePlayWithFriend}

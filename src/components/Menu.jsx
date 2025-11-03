@@ -33,9 +33,7 @@ export const Menu = ({ setUser, onStartLocal, onStartOnline }) => {
           
           <li><Link to="/" className="hover:underline">Home</Link></li>
           <li> <Link to="/friends" className="hover:underline">Friends</Link></li>
-          <li> <Link to="/friendinvites" className="hover:underline">Friendinvites</Link></li>
           
-          <li style={{ marginBottom: "16px", cursor: "pointer" }}>Help</li>
           <li><LogoutButton onLogout={() => setUser(null)} /></li>
         </ul>
       </motion.div>

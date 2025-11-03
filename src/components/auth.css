@@ -1,0 +1,106 @@
+/* General styling */
+body {
+  margin: 0;
+  font-family: 'Roboto', sans-serif;
+  background: linear-gradient(45deg, #6a11cb, #2575fc);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.auth-container {
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 16px;
+  padding: 40px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  max-width: 400px;
+  width: 100%;
+  transition: transform 0.3s ease-in-out;
+}
+
+.auth-container:hover {
+  transform: scale(1.05);
+}
+
+/* Header */
+h2 {
+  font-size: 2rem;
+  color: #4a4a4a;
+  text-align: center;
+  font-weight: 700;
+  margin-bottom: 20px;
+}
+
+/* Input styles */
+input {
+  width: 100%;
+  padding: 15px;
+  margin-bottom: 15px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 1rem;
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+input:focus {
+  border-color: #6a11cb;
+  box-shadow: 0 0 10px rgba(106, 17, 203, 0.3);
+}
+
+button {
+  width: 100%;
+  padding: 15px;
+  background: #6a11cb;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 600;
+}
+
+button:hover {
+  background: #2575fc;
+}
+
+button:disabled {
+  background: #b0b0b0;
+  cursor: not-allowed;
+}
+
+/* Swap button */
+button.swap {
+  background: transparent;
+  color: #2575fc;
+  border: none;
+  text-decoration: underline;
+  font-size: 1rem;
+  font-weight: 600;
+  margin-top: 10px;
+  cursor: pointer;
+  transition: color 0.3s ease;
+}
+
+button.swap:hover {
+  color: #6a11cb;
+}
+
+/* Error message */
+.error {
+  color: #f44336;
+  text-align: center;
+  margin-top: 15px;
+  font-size: 0.9rem;
+}
+
+/* Success or message on login/register */
+p.success {
+  color: #4caf50;
+  text-align: center;
+  margin-top: 15px;
+  font-size: 0.9rem;
+}

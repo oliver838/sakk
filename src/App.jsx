@@ -10,7 +10,6 @@ import { Home } from "./pages/Home";
 import { Menu } from "./components/Menu";
 import { OnlineMatchmaking } from "./pages/OnlineMatchmaking";
 import { Friends } from "./pages/Friends";
-import { FriendInvites } from "./pages/FriendInvites";
 import { BoardWrapper } from "./components/BoardWrapper";
 import { PumpkinOverlay } from "./pumpkins/PumpkinOverlay";
 import { PumpkinProvider } from "./pumpkins/PumpkinContext";
@@ -77,16 +76,12 @@ function App() {
           element={user ? <Friends user={user} /> : <Navigate to="/login" />}
         />
 
-        {/* 🔹 Friend invites */}
-        <Route
-          path="/friendinvites"
-          element={user ? <FriendInvites user={user} /> : <Navigate to="/login" />}
-        />
 
         {/* 🔹 Online game board */}
         <Route
           path="/game/:gameId"
           element={user ? <BoardWrapper user={user} /> : <Navigate to="/login" />}
+          
         />
 
         {/* 🔹 Local game */}

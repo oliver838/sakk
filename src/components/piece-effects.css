@@ -152,3 +152,7 @@
 
 /* ---------- small progressive performance tip: use will-change only for active pieces ---------- */
 /* End of piece-effects.css */
+
+*{
+    cursor: inherit;
+}

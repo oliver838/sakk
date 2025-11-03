@@ -7,7 +7,7 @@
 *{
   box-sizing: border-box;
   margin: 0 auto;
-  
+
   user-select: none;
 }
 .logo {
@@ -62,19 +62,15 @@ body {
   content: "";
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
-  background: url('https://www.transparenttextures.com/patterns/foggy-birds.png');
+  background:
+    url('https://www.transparenttextures.com/patterns/foggy-birds.png'),
+    radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 80%);
+  background-blend-mode: overlay;
   opacity: 0.1;
-  animation: fogMove 60s linear infinite;
+  animation: fogMove 60s linear infinite, flash 8s infinite ease-in-out;
   z-index: -1;
 }
-#root::before {
-  content: "";
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 80%);
-  animation: flash 8s infinite ease-in-out;
-  z-index: -1;
-}
+
 
 @keyframes flash {
   0%, 90%, 100% { opacity: 0; }
@@ -121,4 +117,126 @@ html {
 }
 #root{
   width: 100vw;
+}
+
+
+/*gamecontrols-----------------*/
+/* Game controls / modal styling (paste at the end of App.css) */
+
+/* sidebar card */
+.game-controls-sidebar {
+  width: 22rem;
+  max-width: 90vw;
+  padding: 1rem;
+  display: flex;
+  justify-content: center;
+}
+.controls-card {
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  border: 1px solid rgba(255,255,255,0.06);
+  backdrop-filter: blur(6px);
+  padding: 1.25rem;
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+  width: 100%;
+}
+.controls-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.05rem;
+  letter-spacing: 0.08rem;
+  margin-bottom: 0.25rem;
+  color: #e9e7ff;
+}
+.muted {
+  font-family: Inter, sans-serif;
+  color: rgba(255,255,255,0.6);
+  font-size: 0.88rem;
+  margin-bottom: 1rem;
+}
+.controls-actions {
+  display: flex;
+  gap: 0.6rem;
+  justify-content: space-between;
+  margin-top: 0.75rem;
+}
+
+/* Buttons */
+.btn {
+  font-family: 'Inter', sans-serif;
+  padding: 0.6rem 0.9rem;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  transition: transform .12s ease, box-shadow .12s ease;
+  outline: none;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.5);
+}
+.btn:active { transform: translateY(1px); }
+
+.end-btn {
+  background: linear-gradient(90deg, #7b2cff, #3a00ff);
+  color: white;
+  font-weight: 700;
+  flex: 1;
+}
+.small-btn {
+  background: rgba(255,255,255,0.03);
+  color: rgba(255,255,255,0.9);
+  border: 1px solid rgba(255,255,255,0.05);
+  width: 8.2rem;
+}
+
+/* Modal overlay */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 60;
+  background: linear-gradient(180deg, rgba(2,2,7,0.45), rgba(2,2,7,0.6));
+  backdrop-filter: blur(4px);
+}
+
+/* Modal card */
+.modal-card {
+  width: min(520px, 92vw);
+  background: linear-gradient(180deg, rgba(18,8,35,0.9), rgba(6,3,14,0.98));
+  border-radius: 14px;
+  padding: 1.25rem 1.25rem;
+  border: 1px solid rgba(124, 58, 237, 0.12);
+  box-shadow: 0 18px 50px rgba(8,5,20,0.8);
+}
+.modal-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.05rem;
+  color: #fff;
+  margin-bottom: 0.35rem;
+}
+.modal-desc {
+  color: rgba(255,255,255,0.72);
+  font-size: 0.95rem;
+  margin-bottom: 1rem;
+}
+.modal-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+.cancel-btn {
+  background: transparent;
+  color: rgba(255,255,255,0.9);
+  border: 1px solid rgba(255,255,255,0.06);
+  padding: 0.55rem 0.8rem;
+  border-radius: 10px;
+}
+.confirm-btn {
+  background: linear-gradient(90deg,#ff6b6b,#ff3b3b);
+  color: white;
+  font-weight: 700;
+  padding: 0.55rem 0.9rem;
+  border-radius: 10px;
+}
+li{
+  list-style-type: none;
 }

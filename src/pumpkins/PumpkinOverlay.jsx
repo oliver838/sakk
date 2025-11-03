@@ -1,12 +1,12 @@
-// PumpkinOverlay.jsx (frissített audio rész és lejátszás logika)
-import React, { useEffect, useRef, useState } from 'react';
-import './pumpkin.css';
-import { usePumpkins } from './PumpkinContext.jsx';
+// PumpkinOverlay.jsx (GPU + optimized framerate)
+import React, { useEffect, useRef } from "react";
+import "./pumpkin.css";
+import { usePumpkins } from "./PumpkinContext.jsx";
 
 export const PumpkinOverlay = () => {
   const { showPumpkins, muted, setMuted } = usePumpkins();
   const audioRef = useRef(null);
-  const [pumpkins, setPumpkins] = useState([]);
+  const canvasRef = useRef(null);
 
   useEffect(() => {
     if (!showPumpkins) {
@@ -14,61 +14,80 @@ export const PumpkinOverlay = () => {
         audioRef.current.pause();
         audioRef.current.currentTime = 0;
       }
-      setPumpkins([]);
       return;
     }
 
-    const spawn = Array.from({ length: 8 }).map(() => ({
-      left: Math.random() * 100,
-      top: Math.random() * 100,
-      scale: 0.7 + Math.random() * 0.9,
-      delay: Math.random() * 0.8,
-      id: Math.random().toString(36).slice(2),
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+    let w, h;
+    const resize = () => {
+      w = canvas.width = window.innerWidth;
+      h = canvas.height = window.innerHeight;
+    };
+    resize();
+    window.addEventListener("resize", resize);
+
+    const lines = Array.from({ length: 3000 }).map(() => ({
+      x: Math.random() * w,
+      y: Math.random() * h,
+      width: 20 + Math.random() * 80,
+      height: 0.5 + Math.random() * 1.2,
+      opacity: 0.1 + Math.random() * 0.8,
+      speed: 0.5 + Math.random() * 0.8,
     }));
-    setPumpkins(spawn);
 
-    const audio = audioRef.current;
-    if (!audio) return;
+    let last = 0;
+    const fps = 20; // kb. 12–24 fps közé
+    const interval = 1000 / fps;
 
-    audio.loop = true;
-    audio.preload = 'auto';
-    audio.muted = muted;
+    const draw = (ts) => {
+      if (ts - last < interval) return requestAnimationFrame(draw);
+      last = ts;
 
-    // Fallback: több source (mp3, wav). Ha egyik se megy, a catch feltárja.
-    const tryPlay = () => {
-      const p = audio.play();
-      if (p && typeof p.catch === 'function') {
-        p.catch(err => {
-          console.debug('Pumpkin audio play() rejected:', err);
-          // Ha a play blokkolva van, várjuk a felhasználói gesztust
-          const resume = () => {
-            // próbáljuk meg újra user gesture után
-            audio.play().catch(e => console.warn('Pumpkin audio resume failed:', e));
-            document.removeEventListener('pointerdown', resume);
-          };
-          document.addEventListener('pointerdown', resume, { once: true, passive: true });
-        });
+      ctx.clearRect(0, 0, w, h);
+
+      for (const l of lines) {
+        const grad = ctx.createLinearGradient(l.x, l.y, l.x + l.width, l.y);
+        grad.addColorStop(0, "rgba(197, 94, 255, 0.1)");
+        grad.addColorStop(0.5, "rgba(255, 120, 255, 0.5)");
+        grad.addColorStop(1, "rgba(197, 94, 255, 0.1)");
+        ctx.fillStyle = grad;
+        ctx.globalAlpha =
+          l.opacity * (0.5 + Math.sin(ts * 0.005 * l.speed) * 0.5);
+        ctx.fillRect(l.x, l.y, l.width, l.height);
       }
+
+      ctx.globalAlpha = 1;
+      requestAnimationFrame(draw);
     };
 
-    // Ellenőrizzük, hogy a források léteznek-e és a böngésző le tudja-e játszani őket
-    const canPlayMp3 = audio.canPlayType('audio/mpeg');
-    const canPlayWav = audio.canPlayType('audio/wav');
+    requestAnimationFrame(draw);
 
-    // logoljunk, ha egyik sem támogatott — segít debugolni
-    if (!canPlayMp3 && !canPlayWav) {
-      console.warn('PumpkinOverlay: browser claims it cannot play mp3 or wav:', { canPlayMp3, canPlayWav });
+    // --- audio rész ---
+    const audio = audioRef.current;
+    if (audio) {
+      audio.loop = true;
+      audio.preload = "auto";
+      audio.muted = muted;
+      const tryPlay = () => {
+        const p = audio.play();
+        if (p && typeof p.catch === "function") {
+          p.catch(() => {
+            const resume = () => {
+              audio.play().catch(() => {});
+              document.removeEventListener("pointerdown", resume);
+            };
+            document.addEventListener("pointerdown", resume, { once: true });
+          });
+        }
+      };
+      tryPlay();
     }
 
-    // próbáljuk elindítani
-    tryPlay();
-
     return () => {
-      if (audio) {
-        audio.pause();
-        audio.currentTime = 0;
-      }
-      setPumpkins([]);
+      window.removeEventListener("resize", resize);
+      ctx.clearRect(0, 0, w, h);
+      if (audio) audio.pause();
     };
   }, [showPumpkins, muted]);
 
@@ -76,34 +95,26 @@ export const PumpkinOverlay = () => {
 
   return (
     <div className="global-pumpkin-overlay" aria-hidden="true">
-      {pumpkins.map(p => (
-        <div
-          key={p.id}
-          className="global-pumpkin"
-          style={{
-            left: `${p.left}%`,
-            top: `${p.top}%`,
-            transform: `translate(-50%, -50%) scale(${p.scale})`,
-            animationDelay: `${p.delay}s`
-          }}
-        >
-          🎃
-        </div>
-      ))}
+      <canvas ref={canvasRef} className="purple-canvas"></canvas>
 
       <button
         className="global-pumpkin-mute"
-        onClick={(e) => { e.stopPropagation(); setMuted(prev => !prev); if (audioRef.current) { if (!muted) audioRef.current.pause(); else audioRef.current.play().catch(()=>{});} }}
-        title={muted ? 'Unmute' : 'Mute'}
+        onClick={(e) => {
+          e.stopPropagation();
+          setMuted((prev) => !prev);
+          if (audioRef.current) {
+            if (!muted) audioRef.current.pause();
+            else audioRef.current.play().catch(() => {});
+          }
+        }}
+        title={muted ? "Unmute" : "Mute"}
       >
-        {muted ? '🔇' : '🔊'}
+        {muted ? "🔇" : "🔊"}
       </button>
 
-      {/* több source fallback: előbb mp3, majd wav */}
-      <audio ref={audioRef} style={{ display: 'none' }}>
+      <audio ref={audioRef} style={{ display: "none" }}>
         <source src="/sounds/halloween_cackle.mp3" type="audio/mpeg" />
         <source src="/sounds/halloween_cackle.wav" type="audio/wav" />
-        {/* Ha a szervered más néven szolgálja, módosítsd a src-eket */}
       </audio>
     </div>
   );

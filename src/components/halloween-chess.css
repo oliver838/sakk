@@ -29,7 +29,7 @@
   z-index: 200; /* legyen a piece-ek fölött, de UI elemek alatt ha szükséges - igazítsd ha kell */
   pointer-events: auto; /* fogja a kattintásokat */
   background: rgba(0,0,0,0); /* teljesen átlátszó */
-  cursor: wait; /* vizuális visszajelzés */
+   /* vizuális visszajelzés */
 }
 
 .explosion {
